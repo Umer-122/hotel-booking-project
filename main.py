@@ -12,16 +12,8 @@ load_dotenv()
 
 app = FastAPI()
 
-# Force database tables to initialize on load because Vercel serverless ignores lifespans
-try:
-    asyncio.run(init_db())
-except RuntimeError:
-    # If a cloud event loop is already running, hook into it safely
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        loop.create_task(init_db())
-    else:
-        loop.run_until_complete(init_db())
+# Track if database tables have been verified
+db_initialized = False
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -31,8 +23,17 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    """Serve the booking form"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    """Serve the booking form and safely ensure tables exist"""
+    global db_initialized
+    if not db_initialized:
+        try:
+            await init_db()
+            db_initialized = True
+        except Exception as db_err:
+            print(f"Database initialization failed: {db_err}")
+    
+    # FIXED: Passed request as the first argument to avoid the 500 error
+    return templates.TemplateResponse(request, "index.html", {"request": request})
 
 @app.post("/book")
 async def book_hotel(request: Request):
