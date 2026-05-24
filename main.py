@@ -32,8 +32,8 @@ async def read_root(request: Request):
         except Exception as db_err:
             print(f"Database initialization failed: {db_err}")
     
-    # FIXED: Passed request as the first argument to avoid the 500 error
-    return templates.TemplateResponse(request, "index.html", {"request": request})
+    # FIXED: Put request in the context dictionary
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/book")
 async def book_hotel(request: Request):
