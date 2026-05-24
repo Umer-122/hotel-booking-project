@@ -1,22 +1,27 @@
-from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from contextlib import asynccontextmanager
 import os
+import asyncio
 from dotenv import load_dotenv
+from fastapi import FastAPI, Request, HTTPException
 from database import init_db, insert_booking, get_bookings
 from models import BookingData
 
 load_dotenv()
 
-# Initialize database on startup
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await init_db()
-    yield
+app = FastAPI()
 
-app = FastAPI(lifespan=lifespan)
+# Force database tables to initialize on load because Vercel serverless ignores lifespans
+try:
+    asyncio.run(init_db())
+except RuntimeError:
+    # If a cloud event loop is already running, hook into it safely
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        loop.create_task(init_db())
+    else:
+        loop.run_until_complete(init_db())
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
