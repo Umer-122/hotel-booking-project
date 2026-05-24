@@ -13,17 +13,28 @@ async def init_db():
         conn = psycopg2.connect(DATABASE_URL)
         cursor = conn.cursor()
         
-        # Read and execute SQL file
-        with open('sql/create_table.sql', 'r') as f:
-            sql_script = f.read()
-        cursor.execute(sql_script)
+        # Create table directly
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS bookings (
+                id SERIAL PRIMARY KEY,
+                full_name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                phone VARCHAR(20) NOT NULL,
+                check_in DATE NOT NULL,
+                check_out DATE NOT NULL,
+                room_type VARCHAR(100) NOT NULL,
+                num_guests INT NOT NULL,
+                special_requests TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         
         conn.commit()
         cursor.close()
         conn.close()
-        print("Database initialized successfully")
+        print("✅ Database initialized successfully")
     except Exception as e:
-        print(f"Error initializing database: {e}")
+        print(f"❌ Error initializing database: {e}")
 
 async def insert_booking(booking_data: dict):
     """Insert a booking into the database"""
@@ -44,16 +55,16 @@ async def insert_booking(booking_data: dict):
             booking_data['check_out'],
             booking_data['room_type'],
             booking_data['num_guests'],
-            booking_data['special_requests']
+            booking_data.get('special_requests', '')
         ))
         
         conn.commit()
         cursor.close()
         conn.close()
-        print("Booking inserted successfully")
+        print("✅ Booking inserted successfully")
         return True
     except Exception as e:
-        print(f"Error inserting booking: {e}")
+        print(f"❌ Error inserting booking: {e}")
         raise
 
 async def get_bookings():
@@ -69,5 +80,5 @@ async def get_bookings():
         conn.close()
         return bookings
     except Exception as e:
-        print(f"Error fetching bookings: {e}")
+        print(f"❌ Error fetching bookings: {e}")
         return []
